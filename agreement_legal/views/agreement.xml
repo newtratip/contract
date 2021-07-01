@@ -1,7 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
+    <template
+        id="assets_backend"
+        name="agreement_legal assets"
+        inherit_id="web.assets_backend"
+    >
+        <xpath expr="." position="inside">
+            <script
+                type="text/javascript"
+                src="/agreement_legal/static/src/js/domain_widget_ext.js"
+            />
+        </xpath>
+    </template>
+
     <!-- Agreement List View-->
-    <record model="ir.ui.view" id="partner_agreement_list_view">
+    <record id="partner_agreement_list_view" model="ir.ui.view">
         <field name="name">Agreement List</field>
         <field name="model">agreement</field>
         <field name="arch" type="xml">
@@ -18,7 +32,7 @@
     </record>
 
     <!-- Agreement Form View -->
-    <record model="ir.ui.view" id="partner_agreement_form_view">
+    <record id="partner_agreement_form_view" model="ir.ui.view">
         <field name="name">Agreement Form</field>
         <field name="model">agreement</field>
         <field name="priority" eval="1" />
@@ -42,13 +56,19 @@
                     <field
                         name="stage_id"
                         widget="statusbar"
-                        clickable="True"
-                        options="{'fold_field': 'fold'}"
+                        options="{'clickable': '1', 'fold_field': 'fold'}"
                         domain="[('stage_type', '=', 'agreement')]"
                     />
                 </header>
                 <sheet>
-                    <div class="oe_button_box" name="button_box" />
+                    <widget
+                        name="web_ribbon"
+                        title="Archived"
+                        bg_color="bg-danger"
+                        attrs="{'invisible': [('active', '=', True)]}"
+                    />
+                    <div class="oe_button_box" name="button_box">
+                    </div>
                     <div class="oe_title">
                         <label
                             for="name"
@@ -91,30 +111,21 @@
                         <field name="description" required="True" nolabel="1" />
                     </group>
                     <group class="oe_edit_only">
+                        <field
+                            name="field_domain"
+                            widget="domain"
+                            nolabel="1"
+                            options="{'model': 'agreement',
+                                             'partial_use': True}"
+                        />
                         <group>
-                            <field
-                                name="field_id"
-                                domain="[('model_id', '=', active_model),
-                                            ('ttype', '!=', 'one2many'),
-                                            ('ttype', '!=', 'many2many')]"
-                            />
-                            <field name="sub_object_id" readonly="1" />
-                            <field
-                                name="sub_model_object_field_id"
-                                domain="[('model_id', '=', sub_object_id),
-                                            ('ttype', '!=', 'one2many'),
-                                            ('ttype', '!=', 'many2many')]"
-                                attrs="{'readonly':[('sub_object_id', '=', False)],
-                                           'required':[('sub_object_id', '!=', False)]}"
-                            />
                             <field name="default_value" />
                             <field name="copyvalue" />
                         </group>
                         <p>
                             This section (on the left) allows you to add dynamic fields inside the description and special terms.
                             <ol>
-                                <li>Select the agreement field</li>
-                                <li>Select the sub-field</li>
+                                <li>Select the agreement field using the popup</li>
                                 <li>Enter the default value if the field is empty</li>
                                 <li
                                 >Copy and paste the placeholder expression in the description or the special terms</li>
@@ -138,7 +149,7 @@
                                 <field
                                     name="partner_id"
                                     context="{'show_address': 1}"
-                                    options="{&quot;always_reload&quot;: True}"
+                                    options="{'always_reload': True}"
                                 />
                             </div>
                         </group>
@@ -148,7 +159,7 @@
                                     name="company_id"
                                     readonly="1"
                                     context="{'show_address': 1}"
-                                    options="{&quot;always_reload&quot;: True}"
+                                    options="{'always_reload': True}"
                                 />
                             </div>
                             <field name="company_partner_id" invisible="1" />
@@ -385,7 +396,10 @@
                                         <div
                                             class="o_kanban_record_subtitle text-muted"
                                         >
-                                            <field name="partner_id" />
+                                            <field
+                                                name="partner_id"
+                                                invisible="context.get('default_partner_id', False)"
+                                            />
                                             <t
                                                 t-if="record.end_date.raw_value and record.end_date.raw_value lt (new Date())"
                                                 t-set="red"
@@ -408,7 +422,7 @@
                                             <span
                                                 class="fa fa-ellipsis-v"
                                                 aria-hidden="true"
-                                                title="Icon"
+                                                title=" "
                                             />
                                         </a>
                                         <ul
@@ -462,7 +476,7 @@
     </record>
 
     <!-- Agreement Search View -->
-    <record model="ir.ui.view" id="partner_agreement_search_view">
+    <record id="partner_agreement_search_view" model="ir.ui.view">
         <field name="name">Agreement Search</field>
         <field name="model">agreement</field>
         <field name="arch" type="xml">
@@ -531,25 +545,24 @@
 
     <!-- actions opening views on models -->
 
-    <record model="ir.actions.act_window" id="agreement_dashboard_agreement">
+    <record id="agreement_dashboard_agreement" model="ir.actions.act_window">
         <field name="name">Agreements</field>
         <field name="res_model">agreement</field>
         <field name="domain">[('is_template', '=', False)]</field>
         <field name="view_mode">kanban,tree,form</field>
     </record>
 
-    <record model="ir.actions.act_window" id="agreement_operations_agreement">
+    <record id="agreement_operations_agreement" model="ir.actions.act_window">
         <field name="name">Agreements</field>
         <field name="res_model">agreement</field>
         <field name="domain">[('is_template', '=', False)]</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <record model="ir.actions.act_window" id="partner_agreement_agreement_templates">
+    <record id="partner_agreement_agreement_templates" model="ir.actions.act_window">
         <field name="name">Templates</field>
         <field name="res_model">agreement</field>
         <field name="domain">[('is_template', '=', True)]</field>
-        <!-- <field name="context">[('is_template', '=', True)]</field> -->
         <field name="view_mode">tree,kanban,form</field>
     </record>
 

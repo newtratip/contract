@@ -1,7 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
     <!-- Agreement Appendix List View-->
-    <record model="ir.ui.view" id="agreement_appendix_tree">
+    <record id="agreement_appendix_tree" model="ir.ui.view">
         <field name="name">Agreement Appendix Tree</field>
         <field name="model">agreement.appendix</field>
         <field name="arch" type="xml">
@@ -16,20 +17,18 @@
     </record>
 
     <!-- Agreement Appendix Form View -->
-    <record model="ir.ui.view" id="agreement_appendix_form">
+    <record id="agreement_appendix_form" model="ir.ui.view">
         <field name="name">Agreement Appendix Form</field>
         <field name="model">agreement.appendix</field>
         <field name="arch" type="xml">
             <form string="Appendix">
                 <sheet>
-                    <div class="oe_button_box" name="button_box" />
                     <widget
                         name="web_ribbon"
                         title="Archived"
                         bg_color="bg-danger"
                         attrs="{'invisible': [('active', '=', True)]}"
                     />
-                    <field name="active" invisible="1" />
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only" />
                         <h1><field name="name" /></h1>
@@ -38,6 +37,7 @@
                         <group>
                             <field name="title" />
                             <field name="agreement_id" />
+                            <field name="active" invisible="1" />
                         </group>
                         <group>
                             <field name="sequence" />
@@ -45,30 +45,21 @@
                     </group>
                     <field name="content" widget="html" />
                     <group class="oe_edit_only">
+                        <field
+                            name="field_domain"
+                            widget="domain"
+                            nolabel="1"
+                            options="{'model': 'agreement.appendix',
+                                             'partial_use': True}"
+                        />
                         <group>
-                            <field
-                                name="field_id"
-                                domain="[('model_id', '=', active_model),
-                                            ('ttype', '!=', 'one2many'),
-                                            ('ttype', '!=', 'many2many')]"
-                            />
-                            <field name="sub_object_id" readonly="1" />
-                            <field
-                                name="sub_model_object_field_id"
-                                domain="[('model_id', '=', sub_object_id),
-                                            ('ttype', '!=', 'one2many'),
-                                            ('ttype', '!=', 'many2many')]"
-                                attrs="{'readonly':[('sub_object_id', '=', False)],
-                                           'required':[('sub_object_id', '!=', False)]}"
-                            />
                             <field name="default_value" />
                             <field name="copyvalue" />
                         </group>
                         <p>
                             This section (on the left) allows you to add dynamic fields inside the content.
                             <ol>
-                                <li>Select the appendix field</li>
-                                <li>Select the sub-field</li>
+                                <li>Select the field using the popup</li>
                                 <li>Enter the default value if the field is empty</li>
                                 <li
                                 >Copy and paste the placeholder expression in the content</li>
@@ -81,11 +72,11 @@
     </record>
 
     <!-- Agreement Appendix Search View -->
-    <record model="ir.ui.view" id="agreement_appendix_search">
+    <record id="agreement_appendix_search" model="ir.ui.view">
         <field name="name">Agreement Appendix Search</field>
         <field name="model">agreement.appendix</field>
         <field name="arch" type="xml">
-            <search string="Appendix">
+            <search>
                 <field name="name" />
                 <filter
                     name="group_agreement"
@@ -97,7 +88,7 @@
     </record>
 
     <!-- Actions opening views on models -->
-    <record model="ir.actions.act_window" id="agreement_appendix_action">
+    <record id="agreement_appendix_action" model="ir.actions.act_window">
         <field name="name">Appendices</field>
         <field name="res_model">agreement.appendix</field>
         <field name="view_mode">tree,form</field>

@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <odoo>
 
     <record id="res_config_settings_view_form" model="ir.ui.view">
@@ -187,9 +188,10 @@
     <record id="action_agreement_config" model="ir.actions.act_window">
         <field name="name">Settings</field>
         <field name="res_model">res.config.settings</field>
+        <field name="type">ir.actions.act_window</field>
         <field name="view_mode">form</field>
         <field name="target">inline</field>
-        <field name="context">{'module': 'agreement'}</field>
+        <field name="context">{'module': 'agreement_legal'}</field>
     </record>
 
 </odoo>

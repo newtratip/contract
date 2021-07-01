@@ -7,6 +7,7 @@ from odoo import _, api, fields, models
 class Agreement(models.Model):
     _inherit = "agreement"
 
+    # General
     name = fields.Char(string="Title", required=True)
     version = fields.Integer(
         string="Version",
@@ -22,7 +23,9 @@ class Agreement(models.Model):
         help="The revision will increase with every save event.",
     )
     description = fields.Text(
-        string="Description", tracking=True, help="Description of the agreement"
+        string="Description",
+        tracking=True,
+        help="Description of the agreement",
     )
     dynamic_description = fields.Text(
         compute="_compute_dynamic_description",
@@ -30,7 +33,9 @@ class Agreement(models.Model):
         help="Compute dynamic description",
     )
     start_date = fields.Date(
-        string="Start Date", tracking=True, help="When the agreement starts."
+        string="Start Date",
+        tracking=True,
+        help="When the agreement starts.",
     )
     end_date = fields.Date(
         string="End Date", tracking=True, help="When the agreement ends."
@@ -86,12 +91,6 @@ class Agreement(models.Model):
         tracking=True,
         copy=False,
         help="ID used for internal contract tracking.",
-    )
-    increase_type_id = fields.Many2one(
-        "agreement.increasetype",
-        string="Increase Type",
-        tracking=True,
-        help="The amount that certain rates may increase.",
     )
     termination_requested = fields.Date(
         string="Termination Requested Date",
@@ -219,12 +218,6 @@ class Agreement(models.Model):
         "agreement is an amendment to another agreement. This list will "
         "only show other agreements related to the same account.",
     )
-    renewal_type_id = fields.Many2one(
-        "agreement.renewaltype",
-        string="Renewal Type",
-        tracking=True,
-        help="Describes what happens after the contract expires.",
-    )
     recital_ids = fields.One2many(
         "agreement.recital", "agreement_id", string="Recitals", copy=True
     )
@@ -241,6 +234,7 @@ class Agreement(models.Model):
         string="Previous Versions",
         copy=False,
         domain=[("active", "=", False)],
+        context={"active_test": False},
     )
     child_agreements_ids = fields.One2many(
         "agreement",
@@ -265,25 +259,10 @@ class Agreement(models.Model):
     )
     signed_contract_filename = fields.Char(string="Filename")
     signed_contract = fields.Binary(string="Signed Document", tracking=True)
-    field_id = fields.Many2one(
-        "ir.model.fields",
-        string="Field",
-        help="""Select target field from the related document model. If it is a
-         relationship field you will be able to select a target field at the
-         destination of the relationship.""",
-    )
-    sub_object_id = fields.Many2one(
-        "ir.model",
-        string="Sub-model",
-        help="""When a relationship field is selected as first field, this
-         field shows the document model the relationship goes to.""",
-    )
-    sub_model_object_field_id = fields.Many2one(
-        "ir.model.fields",
-        string="Sub-field",
-        help="""When a relationship field is selected as first field, this
-         field lets you select the target field within the destination document
-          model (sub-model).""",
+
+    # Dynamic field editor
+    field_domain = fields.Char(
+        string="Field Expression", default='[["active", "=", True]]'
     )
     default_value = fields.Char(
         string="Default Value",
@@ -295,26 +274,34 @@ class Agreement(models.Model):
          template field.""",
     )
 
-    # compute the dynamic content for mako expression
+    @api.onchange("field_domain", "default_value")
+    def onchange_copyvalue(self):
+        self.copyvalue = False
+        if self.field_domain:
+            string_list = self.field_domain.split(",")
+            if string_list:
+                field_domain = string_list[0][3:-1]
+                self.copyvalue = "${{object.{} or {}}}".format(
+                    field_domain, self.default_value or "''"
+                )
+
+    # compute the dynamic content for jinja expression
     def _compute_dynamic_description(self):
         MailTemplates = self.env["mail.template"]
         for agreement in self:
             lang = agreement.partner_id.lang or "en_US"
             description = MailTemplates.with_context(lang=lang)._render_template(
-                agreement.description, "agreement", [agreement.id]
-            )
-            des = ""
-            for i in description:
-                des += description[i]
-            agreement.dynamic_description = des
+                agreement.description, "agreement", agreement.ids
+            )[agreement.id]
+            agreement.dynamic_description = description
 
     def _compute_dynamic_parties(self):
         MailTemplates = self.env["mail.template"]
         for agreement in self:
             lang = agreement.partner_id.lang or "en_US"
             parties = MailTemplates.with_context(lang=lang)._render_template(
-                agreement.parties, "agreement", [agreement.id]
-            )
+                agreement.parties, "agreement", agreement.ids
+            )[agreement.id]
             agreement.dynamic_parties = parties
 
     def _compute_dynamic_special_terms(self):
@@ -322,30 +309,9 @@ class Agreement(models.Model):
         for agreement in self:
             lang = agreement.partner_id.lang or "en_US"
             special_terms = MailTemplates.with_context(lang=lang)._render_template(
-                agreement.special_terms, "agreement", [agreement.id]
-            )
+                agreement.special_terms, "agreement", agreement.ids
+            )[agreement.id]
             agreement.dynamic_special_terms = special_terms
-
-    @api.onchange("field_id", "sub_model_object_field_id", "default_value")
-    def onchange_copyvalue(self):
-        self.sub_object_id = False
-        self.copyvalue = False
-        self.sub_object_id = False
-        if self.field_id and not self.field_id.relation:
-            self.copyvalue = "${{object.{} or {}}}".format(
-                self.field_id.name, self.default_value or "''"
-            )
-            self.sub_model_object_field_id = False
-        if self.field_id and self.field_id.relation:
-            self.sub_object_id = self.env["ir.model"].search(
-                [("model", "=", self.field_id.relation)]
-            )[0]
-        if self.sub_model_object_field_id:
-            self.copyvalue = "${{object.{}.{} or {}}}".format(
-                self.field_id.name,
-                self.sub_model_object_field_id.name,
-                self.default_value or "''",
-            )
 
     # Used for Kanban grouped_by view
     @api.model
@@ -360,12 +326,23 @@ class Agreement(models.Model):
         string="Stage",
         group_expand="_read_group_stage_ids",
         help="Select the current stage of the agreement.",
+        default=lambda self: self._get_default_stage_id(),
         tracking=True,
         index=True,
     )
 
+    @api.model
+    def _get_default_stage_id(self):
+        try:
+            stage_id = self.env.ref("agreement_legal.agreement_stage_new").id
+        except ValueError:
+            stage_id = False
+        return stage_id
+
     # Create New Version Button
-    def create_new_version(self):
+    def create_new_version(self, vals=None):
+        if not vals:
+            vals = {}
         for rec in self:
             if not rec.state == "draft":
                 # Make sure status is draft
@@ -374,23 +351,24 @@ class Agreement(models.Model):
                 "name": "{} - OLD VERSION".format(rec.name),
                 "active": False,
                 "parent_agreement_id": rec.id,
-                "version": rec.version,
-                "code": rec.code + "-V" + str(rec.version),
             }
             # Make a current copy and mark it as old
-            rec.copy(default=default_vals)
+            res = rec.copy(default=default_vals)
+            res.sections_ids.mapped("clauses_ids").write({"agreement_id": res.id})
             # Increment the Version
             rec.version = rec.version + 1
+        # Reset revision to 0 since it's a new version
+        vals["revision"] = 0
+        return super(Agreement, self).write(vals)
 
     def create_new_agreement(self):
-        self.ensure_one()
         default_vals = {
-            "name": "New",
+            "name": "NEW",
             "active": True,
             "version": 1,
             "revision": 0,
             "state": "draft",
-            "stage_id": self.env.ref("agreement_legal.agreement_stage_new").id,
+            "stage_id": self._get_default_stage_id(),
         }
         res = self.copy(default=default_vals)
         res.sections_ids.mapped("clauses_ids").write({"agreement_id": res.id})
@@ -407,10 +385,21 @@ class Agreement(models.Model):
         if vals.get("code", _("New")) == _("New"):
             vals["code"] = self.env["ir.sequence"].next_by_code("agreement") or _("New")
         if not vals.get("stage_id"):
-            vals["stage_id"] = self.env.ref("agreement_legal.agreement_stage_new").id
-        return super().create(vals)
+            vals["stage_id"] = self._get_default_stage_id()
+        return super(Agreement, self).create(vals)
 
     # Increments the revision on each save action
     def write(self, vals):
-        vals["revision"] = self.revision + 1
-        return super().write(vals)
+        res = True
+        for rec in self:
+            vals["revision"] = rec.revision + 1
+            res = super(Agreement, rec).write(vals)
+        return res
+
+    @api.returns("self", lambda value: value.id)
+    def copy(self, default=None):
+        default = dict(default or {})
+        if default.get("code", False):
+            return super().copy(default)
+        default.setdefault("code", _("New"))
+        return super().copy(default)
